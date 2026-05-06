@@ -11,6 +11,8 @@ pinned: false
 
 App que analiza el sentimiento de archivos de la SEC usando [Qwen2-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2-0.5B-Instruct). Corre completamente en local, sin API keys.
 
+![screenshot](screenshot.png)
+
 ## Cómo usarla
 
 1. Sube un archivo de la SEC (.txt o .htm)
