@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Análisis de Sentimiento SEC</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f6f9; color: #333; }
+
+    header {
+      background: #1a2e4a;
+      color: white;
+      padding: 20px 40px;
+    }
+    header h1 { font-size: 22px; }
+    header p { font-size: 13px; color: #a0b4c8; margin-top: 4px; }
+
+    .container { max-width: 760px; margin: 40px auto; padding: 0 20px; }
+
+    .card {
+      background: white;
+      border-radius: 10px;
+      padding: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .card h2 { font-size: 15px; color: #1a2e4a; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    #drop-zone {
+      border: 2px dashed #bcd;
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      color: #789;
+      transition: background 0.2s;
+    }
+    #drop-zone.hover { background: #eef4ff; border-color: #4a90e2; }
+    #drop-zone input { display: none; }
+    #drop-zone span { font-size: 14px; }
+    #file-name { margin-top: 10px; font-size: 13px; color: #4a90e2; }
+
+    select, button {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 15px;
+      border-radius: 7px;
+      border: 1px solid #cdd;
+      margin-top: 8px;
+    }
+    button {
+      background: #1a2e4a;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 16px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+    }
+    button:hover { background: #26446e; }
+    button:disabled { background: #999; cursor: not-allowed; }
+
+    #result-card { display: none; }
+
+    .sentiment-badge {
+      display: inline-block;
+      font-size: 26px;
+      font-weight: bold;
+      padding: 10px 28px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .Positive  { background: #e6f9ee; color: #1a7a45; }
+    .Negative  { background: #fdecea; color: #b71c1c; }
+    .Neutral   { background: #fff8e1; color: #856404; }
+
+    #explanation {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #444;
+      background: #f9f9f9;
+      padding: 14px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+    }
+
+    #status { font-size: 13px; color: #789; margin-top: 10px; min-height: 18px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Análisis de Sentimiento — Archivos SEC</h1>
+  <p>Powered by Qwen2-0.5B-Instruct &nbsp;·&nbsp; Corre completamente en local</p>
+</header>
+
+<div class="container">
+
+  <div class="card">
+    <h2>1. Sube tu archivo SEC</h2>
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <input type="file" id="file-input" accept=".txt,.htm,.html">
+      <span>Arrastra tu archivo aquí o haz clic para seleccionarlo<br><small>(.txt o .htm)</small></span>
+      <div id="file-name"></div>
+    </div>
+    <div id="status"></div>
+  </div>
+
+  <div class="card" id="section-card" style="display:none">
+    <h2>2. Selecciona una sección</h2>
+    <select id="section-select"></select>
+    <button id="analyze-btn" onclick="analyze()">Analizar sentimiento</button>
+  </div>
+
+  <div class="card" id="result-card">
+    <h2>3. Resultado</h2>
+    <div id="sentiment-badge" class="sentiment-badge"></div>
+    <div id="explanation"></div>
+  </div>
+
+</div>
+
+<script>
+  let sections = [];
+
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('hover');
+    handleFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', () => handleFile(fileInput.files[0]));
+
+  async function handleFile(file) {
+    if (!file) return;
+    document.getElementById('file-name').textContent = file.name;
+    document.getElementById('status').textContent = 'Procesando archivo...';
+    document.getElementById('section-card').style.display = 'none';
+    document.getElementById('result-card').style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await res.json();
+
+    sections = data.sections;
+    const select = document.getElementById('section-select');
+    select.innerHTML = '';
+    sections.forEach((s, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = s.name;
+      select.appendChild(opt);
+    });
+
+    document.getElementById('section-card').style.display = 'block';
+    document.getElementById('status').textContent = `${sections.length} sección(es) detectada(s).`;
+  }
+
+  async function analyze() {
+    const idx = parseInt(document.getElementById('section-select').value);
+    const text = sections[idx].text;
+    const btn = document.getElementById('analyze-btn');
+
+    btn.disabled = true;
+    btn.textContent = 'Analizando...';
+    document.getElementById('result-card').style.display = 'none';
+
+    const res = await fetch('/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    const data = await res.json();
+
+    const badge = document.getElementById('sentiment-badge');
+    badge.textContent = data.sentiment === 'Positive' ? '✅ Positivo' :
+                        data.sentiment === 'Negative' ? '❌ Negativo' : '➖ Neutral';
+    badge.className = 'sentiment-badge ' + data.sentiment;
+
+    document.getElementById('explanation').textContent = data.explanation;
+    document.getElementById('result-card').style.display = 'block';
+
+    btn.disabled = false;
+    btn.textContent = 'Analizar sentimiento';
+  }
+</script>
+
+</body>
+</html>
