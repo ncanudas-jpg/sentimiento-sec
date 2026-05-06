@@ -9,7 +9,7 @@ pinned: false
 
 # Análisis de Sentimiento — Archivos SEC
 
-App que analiza el sentimiento de archivos de la SEC usando [Qwen2-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2-0.5B-Instruct). Corre completamente en local, sin API keys.
+App que analiza el sentimiento de archivos de la SEC usando [Qwen2-0.5B-Instruct](https://huggingface.co/Qwen/Qwen2-0.5B-Instruct). Corre completamente en local, sin API keys. Disponible en línea en [Hugging Face Spaces](https://huggingface.co/spaces/ncanudas/sentimiento-sec).
 
 ![screenshot](screenshot.png)
 
